@@ -4,3 +4,11 @@ file(GLOB_RECURSE HEADER_FILES . *.h)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
 
 target_link_options(${PROJECT_NAME} PRIVATE ${LD_WINONLY_FLAG})
+
+if (STATIC_LINK)
+	if (MSVC)
+		target_link_options(${PROJECT_NAME} PRIVATE /MD)
+	else()
+		target_link_options(${PROJECT_NAME} PRIVATE -static)
+	endif()
+endif()

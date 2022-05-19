@@ -14,9 +14,9 @@ public:
 	Widget();
 	Widget(int width, int height);
 public:
-	virtual void resize(int width, int height);
-	virtual void move(int x, int y);
-	virtual void set_title(const char *title);
+	void resize(int width, int height);
+	void move(int x, int y);
+	void set_title(const char *title);
 
 	void setup(const Widget *parent = nullptr);
 public:
@@ -27,6 +27,8 @@ public:
 	int height() const;
 public:
 	virtual void created();
+	virtual void moved(int x, int y);
+	virtual void resized(int width, int height, int type);
 
 	virtual void mouse_hover(int x, int y);
 	virtual void mouse_leave();
@@ -41,6 +43,11 @@ public:
 protected:
 	static LRESULT CALLBACK processor(HWND, UINT, WPARAM, LPARAM);
 protected:
+	int m_default_min_width, m_default_min_height;
+	int m_default_max_width, m_default_max_height;
+	int m_min_width, m_min_height;
+	int m_max_width, m_max_height;
+protected:
 	HWND m_hwnd;
 	size_t m_width, m_height;
 	int m_posx, m_posy;
@@ -50,6 +57,6 @@ private:
 	bool m_setup;
 };
 
-}
+};
 
 #endif /*UI_WIDGET_H*/

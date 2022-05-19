@@ -29,6 +29,9 @@ public:
 	}
 	void mouse_leave() override {
 		m_on_drag = false;
+
+		HCURSOR cursor = LoadCursor(NULL, IDC_ARROW);
+		SetClassLongPtr(m_hwnd, GCLP_HCURSOR, (LONG_PTR)cursor);
 	}
 	void created() override {
 		reset_status();
@@ -48,9 +51,15 @@ public:
 		track.dwHoverTime = HOVER_DEFAULT;
 		track.cbSize      = sizeof(TRACKMOUSEEVENT);
 		TrackMouseEvent(&track);
+
+		HCURSOR cursor = LoadCursor(NULL, IDC_HAND);
+		SetClassLongPtr(m_hwnd, GCLP_HCURSOR, (LONG_PTR)cursor);
 	}
 	void mouse_release(int x, int y, int key_state) override {
 		m_on_drag = false;
+
+		HCURSOR cursor = LoadCursor(NULL, IDC_ARROW);
+		SetClassLongPtr(m_hwnd, GCLP_HCURSOR, (LONG_PTR)cursor);
 	}
 	void mouse_move(int x, int y, int key_state) override {
 		if (!m_on_drag) return;
@@ -103,14 +112,20 @@ public:
 			board.top += (int)ceil(-board.top * 1.0 / m_grid_width) * m_grid_width;
 		}
 
+		POINT delta[] = {{0, 0}, {-4, -4}, {-4, 4}, {4, -4}, {4, 4}};
+		int r = m_grid_width * 1.0 / 9;
+
 		PAINTSTRUCT ps;
 		BeginPaint(m_hwnd, &ps);
 
 		HDC hmdc = CreateCompatibleDC(ps.hdc);
 		HBITMAP hbitmap = CreateCompatibleBitmap(ps.hdc, m_width, m_height);
 		SelectObject(hmdc, hbitmap);
+		SelectObject(hmdc, (HBRUSH)GetStockObject(BLACK_BRUSH));
 
-		FillRect(hmdc, &rect, (HBRUSH)GetStockObject(WHITE_BRUSH));
+		HBRUSH wooden_brush = CreateSolidBrush(RGB(251, 228, 152));
+		FillRect(hmdc, &rect, wooden_brush);
+		DeleteObject(wooden_brush);
 
 		for (int x = board.left; x <= m_width && x <= to_x; x += m_grid_width) {
 			MoveToEx(hmdc, x, from_y, NULL);
@@ -120,6 +135,17 @@ public:
 		for (int y = board.top; y <= m_height && y <= to_y; y += m_grid_width) {
 			MoveToEx(hmdc, from_x, y, NULL);
 			LineTo(hmdc, to_x, y);
+		}
+
+		for (int i = 0; i < sizeof(delta) / sizeof(POINT); ++i) {
+			POINT pt = {
+				m_origin_x + delta[i].x * m_grid_width,
+				m_origin_y + delta[i].y * m_grid_width
+			};
+			RECT rdot = { pt.x - r, pt.y - r, pt.x + r, pt.y + r };
+			if (PtInRect(&rect, pt)) {
+				FillRect(hmdc, &rdot, (HBRUSH)GetStockObject(BLACK_BRUSH));
+			}
 		}
 
 		BitBlt(ps.hdc, 0, 0, m_width, m_height, hmdc, 0, 0, SRCCOPY);

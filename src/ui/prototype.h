@@ -37,7 +37,7 @@ protected:
     void reset(const char *name);
 private:
     virtual char* __class__() const = 0;
-    char m_classname[32];
+    char m_classname[64];
 };
 
 };

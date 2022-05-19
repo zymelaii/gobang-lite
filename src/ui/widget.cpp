@@ -24,7 +24,11 @@ void Widget::resize(int width, int height) {
 	m_width = width;
 	m_height = height;
 	if (m_setup) {
-		MoveWindow(m_hwnd, m_posx, m_posy, m_width, m_height, TRUE);
+		SetWindowPos(
+			m_hwnd, NULL,
+			0, 0,
+			m_width, m_height,
+			SWP_NOMOVE | SWP_NOZORDER);
 	}
 }
 
@@ -32,7 +36,11 @@ void Widget::move(int x, int y) {
 	m_posx = x;
 	m_posy = y;
 	if (m_setup) {
-		MoveWindow(m_hwnd, m_posx, m_posy, m_width, m_height, TRUE);
+		SetWindowPos(
+			m_hwnd, NULL,
+			m_posx, m_posy,
+			0, 0,
+			SWP_NOSIZE | SWP_NOZORDER);
 	}
 }
 
@@ -65,7 +73,7 @@ void Widget::setup(const Widget *parent) {
 
 	HWND hparent = parent ? parent->m_hwnd : NULL;
 	DWORD style  = parent ? WS_CHILD | WS_VISIBLE :
-		WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
+		WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
 
 	m_hwnd = CreateWindowEx(
 		0,
@@ -114,7 +122,7 @@ LRESULT CALLBACK Widget::processor(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 				window.bottom -= window.top;
 				client.right  -= client.left;
 				client.bottom -= client.top;
-				SetWindowPos(widget->m_hwnd, 0, 0, 0,
+				SetWindowPos(widget->m_hwnd, NULL, 0, 0,
 					window.right - client.right + widget->m_width,
 					window.bottom - client.bottom + widget->m_height,
 					SWP_NOMOVE | SWP_NOZORDER);
@@ -126,6 +134,46 @@ LRESULT CALLBACK Widget::processor(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 			SetFocus(hwnd);
 		}
 		break;
+		case WM_WINDOWPOSCHANGED: {
+			WINDOWPOS *winpos = reinterpret_cast<WINDOWPOS*>(lparam);
+  			if (!(winpos->flags & SWP_NOSIZE)) {
+  				RECT window, client;
+  				GetWindowRect(hwnd, &window);
+  				GetClientRect(hwnd, &client);
+  				widget->m_width  = winpos->cx - (window.right - window.left - client.right);
+  				widget->m_height = winpos->cy - (window.bottom - window.top - client.bottom);
+  			}
+  			if (!(winpos->flags & SWP_NOMOVE)) {
+  				widget->m_posx = winpos->x;
+  				widget->m_posy = winpos->y;
+  			}
+			return DefWindowProc(hwnd, msg, wparam, lparam);
+		}
+		break;
+		case WM_SYSCOMMAND: {
+			return DefWindowProc(hwnd, msg, wparam, lparam);
+		}
+		break;
+		case WM_GETMINMAXINFO: {
+			/**
+			 * @brief set min max size info
+			 */
+			MINMAXINFO *info = reinterpret_cast<MINMAXINFO*>(lparam);
+			// TODO
+		}
+		break;
+		case WM_MOVE: {
+			int posx = GET_X_LPARAM(lparam);
+			int posy = GET_Y_LPARAM(lparam);
+			widget->moved(posx, posy);
+		}
+		break;
+		case WM_SIZE: {
+			int client_width  = LOWORD(lparam);
+			int client_height = HIWORD(lparam);
+			widget->resized(client_width, client_height, wparam);
+		}
+		break;
 		case WM_MOUSEHOVER: {
 			int posx = GET_X_LPARAM(lparam);
 			int posy = GET_Y_LPARAM(lparam);
@@ -134,27 +182,6 @@ LRESULT CALLBACK Widget::processor(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 		break;
 		case WM_MOUSELEAVE: {
 			widget->mouse_leave();
-		}
-		break;
-		case WM_WINDOWPOSCHANGED: {
-			WINDOWPOS *winpos = reinterpret_cast<WINDOWPOS*>(lparam);
-			// WINDOWPOS {
-			//     hwnd: HWND
-  			//     hwndInsertAfter: HWND
-  			//     x: int
-  			//     y: int
-  			//     cx: int
-  			//     cy: int
-  			//     flags: UINT
-  			// }
-  			// TODO
-			return DefWindowProc(hwnd, msg, wparam, lparam);
-		}
-		break;
-		case WM_SIZE: {
-			int client_width  = LOWORD(lparam);
-			int client_height = HIWORD(lparam);
-			// TODO
 		}
 		break;
 		case WM_LBUTTONDOWN:
@@ -227,6 +254,14 @@ void Widget::created() {
 
 }
 
+void Widget::moved(int x, int y) {
+
+}
+
+void Widget::resized(int width, int height, int type) {
+
+}
+
 void Widget::mouse_hover(int x, int y) {
 
 }
@@ -270,4 +305,4 @@ void Widget::render() {
 	EndPaint(m_hwnd, &ps);
 }
 
-}
+};

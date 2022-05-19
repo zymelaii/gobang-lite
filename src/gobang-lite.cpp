@@ -7,10 +7,9 @@ using gobang::ui::UiObject;
 class GobangLiteApp : public Widget {
 	UI_OBJECT;
 public:
-	GobangLiteApp(const char *title)
+	GobangLiteApp(int argc, const char **argv)
 		: Widget(1000, 640) {
 		UiObject::reset(__class__());
-		set_title(title);
 		setup();
 	}
 	int exec() {
@@ -23,18 +22,23 @@ public:
 		return msg.wParam;
 	}
 	void set_view(View *view) {
-		int size = width() < height() ? width() : height();
-		view->resize(size - 20, size - 20);
-		view->move(width() - view->width() - 10, 10);
 		m_view = view;
+		resized(m_width, m_height, 0);
 		add_widget(m_view);
+	}
+public:
+	void resized(int width, int height, int type) override {
+		int size = width < height ? width : height;
+		m_view->resize(size - 20, size - 20);
+		m_view->move(width - m_view->width() - 10, 10);
 	}
 private:
 	View *m_view;
 };
 
 int main(int argc, const char *argv[]) {
-	GobangLiteApp app("Gobang Lite");
+	GobangLiteApp app(argc, argv);
+	app.set_title("Gobang Lite");
 	app.set_view(new View);
 	return app.exec();
 }

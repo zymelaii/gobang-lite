@@ -1,0 +1,1 @@
+#include "../gobang/gobang.h"
