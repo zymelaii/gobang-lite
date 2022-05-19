@@ -1,0 +1,6 @@
+file(GLOB_RECURSE SOURCE_FILES . *.cpp)
+file(GLOB_RECURSE HEADER_FILES . *.h)
+
+add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
+
+target_link_options(${PROJECT_NAME} PRIVATE ${LD_WINONLY_FLAG})
