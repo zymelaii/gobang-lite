@@ -1,5 +1,6 @@
 #include "ui/widget.h"
 #include "view.h"
+#include <stdio.h>
 
 using gobang::ui::Widget;
 using gobang::ui::UiObject;
@@ -8,7 +9,7 @@ class GobangLiteApp : public Widget {
 	UI_OBJECT;
 public:
 	GobangLiteApp(int argc, const char **argv)
-		: Widget(1000, 640) {
+		: Widget(700, 500) {
 		UiObject::reset(__class__());
 		setup();
 	}
@@ -36,9 +37,12 @@ private:
 	View *m_view;
 };
 
+#include <stdio.h>
 int main(int argc, const char *argv[]) {
 	GobangLiteApp app(argc, argv);
-	app.set_title("Gobang Lite");
+	app.set_title("Gobang Lite *家徒四壁限定版");
+
 	app.set_view(new View);
+
 	return app.exec();
 }

@@ -19,7 +19,7 @@ public:
 	/**
 	 * @breif dorp a chess
 	 */
-	bool drop(int x, int y, ChessType type);
+	bool drop(int row, int col, ChessType type);
 	/**
 	 * @breif undo chess-drop
 	 */
@@ -31,11 +31,19 @@ public:
 	/**
 	 * @breif judge win-condition at (x,y)
 	 */
-	bool judge(int x, int y) const;
+	bool judge(int row, int col) const;
+	/**
+	 * @brief check whether drop is available
+	 */
+	bool check(int row, int col) const;
+public:
+	using RecordSet = std::vector<std::tuple<int, int, ChessType>>;
+	RecordSet::iterator drop_begin();
+	RecordSet::iterator drop_end();
 private:
 	ChessType m_status[GridNumber][GridNumber];
 
-	std::vector<std::tuple<int, int, ChessType>> m_history;
+	RecordSet m_history;
 	int m_timestamp_ptr;
 };
 
