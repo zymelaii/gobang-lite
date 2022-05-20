@@ -16,32 +16,37 @@ Widget::Widget()
 }
 
 Widget::Widget(int width, int height)
-	: Widget() {
+	: UiObject(__class__()), m_setup(false) {
+
+	m_posx = m_posy = CW_USEDEFAULT;
+	m_title = NULL;
+	m_title_len = 0;
+
 	resize(width, height);
 }
 
 void Widget::resize(int width, int height) {
 	m_width = width;
 	m_height = height;
-	if (m_setup) {
-		SetWindowPos(
-			m_hwnd, NULL,
-			0, 0,
-			m_width, m_height,
-			SWP_NOMOVE | SWP_NOZORDER);
-	}
+	if (!m_setup) return;
+
+	SetWindowPos(
+		m_hwnd, NULL,
+		0, 0,
+		m_width, m_height,
+		SWP_NOMOVE | SWP_NOZORDER);
 }
 
 void Widget::move(int x, int y) {
 	m_posx = x;
 	m_posy = y;
-	if (m_setup) {
-		SetWindowPos(
-			m_hwnd, NULL,
-			m_posx, m_posy,
-			0, 0,
-			SWP_NOSIZE | SWP_NOZORDER);
-	}
+	if (!m_setup) return;
+
+	SetWindowPos(
+		m_hwnd, NULL,
+		m_posx, m_posy,
+		0, 0,
+		SWP_NOSIZE | SWP_NOZORDER);
 }
 
 void Widget::set_title(const char *title) {
@@ -216,10 +221,12 @@ LRESULT CALLBACK Widget::processor(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 		}
 		break;
 		case WM_MOUSEWHEEL: {
-			int posx  = GET_X_LPARAM(lparam);
-			int posy  = GET_Y_LPARAM(lparam);
+			RECT window;
+			GetWindowRect(hwnd, &window);
+			int posx  = GET_X_LPARAM(lparam) - window.left;
+			int posy  = GET_Y_LPARAM(lparam) - window.top;
 			int delta = GET_WHEEL_DELTA_WPARAM(wparam);
-			widget->wheel_change(posx, posy, delta);
+			widget->wheel_change(posx, posy, delta, LOWORD(wparam));
 		}
 		break;
 		case WM_PAINT: {
@@ -290,7 +297,7 @@ void Widget::double_click(int x, int y, int key_state) {
 
 }
 
-void Widget::wheel_change(int x, int y, int delta) {
+void Widget::wheel_change(int x, int y, int delta, int key_state) {
 	
 }
 

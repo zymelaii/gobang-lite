@@ -7,8 +7,12 @@ target_link_options(${PROJECT_NAME} PRIVATE ${LD_WINONLY_FLAG})
 
 if (STATIC_LINK)
 	if (MSVC)
-		target_link_options(${PROJECT_NAME} PRIVATE /MD)
+		# ignore
 	else()
 		target_link_options(${PROJECT_NAME} PRIVATE -static)
 	endif()
+endif()
+
+if (NOT MSVC)
+	target_compile_options(${PROJECT_NAME} PRIVATE -g)
 endif()

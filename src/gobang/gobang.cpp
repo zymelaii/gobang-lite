@@ -4,6 +4,11 @@
 
 namespace gobang {
 
+Player::Player()
+	: m_joined(nullptr) {
+
+}
+
 bool Player::accept(Game *game) {
 	if (game == nullptr || m_joined != nullptr) return false;
 	m_joined = game;
@@ -22,7 +27,7 @@ size_t Player::query() {
 
 Game::Game()
 	: m_white_chess_player(nullptr), m_black_chess_player(nullptr),
-	m_on_game(false) {
+	m_on_game(false), m_finished(true) {
 
 }
 
@@ -31,12 +36,12 @@ bool Game::join(Player *player, ChessType type) {
 	if (m_on_game || type == ChessType::nil) return false;
 	if (player->accept(this)) {
 		if (type == ChessType::white) {
-			if (player == m_white_chess_player) return true;
 			if (player == m_black_chess_player) return false;
+			m_white_chess_player = player;
 			player->connect(std::bind(&Game::drop, this, _1, _2, ChessType::white));
 		} else {
 			if (player == m_white_chess_player) return false;
-			if (player == m_black_chess_player) return true;
+			m_black_chess_player = player;
 			player->connect(std::bind(&Game::drop, this, _1, _2, ChessType::black));
 		}
 		return true;
@@ -51,32 +56,47 @@ bool Game::start() {
 		m_finished   = false;
 		m_has_winner = false;
 
-		m_term = ChessType::black;
-
 		m_white_pieces_num = 112;
 		m_black_pieces_num = 113;
 
 		m_board.reset();
+
+		m_term = ChessType::nil;
+		next_term();
+
 		return true;
 	}
 	return false;
 }
 
-bool Game::finish() const {
+void Game::terminate() {
+	m_on_game    = false;
+	m_finished   = true;
+	m_has_winner = false;
+}
+
+bool Game::finished() const {
 	return m_finished;
 }
 
 bool Game::next_term() {
 	if (!m_on_game || m_finished) return false;
-	m_term = m_term == ChessType::white ?
-		ChessType::black : ChessType::white;
+	if (m_term == ChessType::nil) {
+		m_term = ChessType::black;
+	} else {
+		m_term = m_term == ChessType::white ?
+			ChessType::black : ChessType::white;
+	}
 	size_t pieces_num = m_term == ChessType::white ?
 		m_white_pieces_num : m_black_pieces_num;
 	if (pieces_num == 0) {
-		m_finished = true;
+		m_finished   = true;
 		m_has_winner = false;
 		return false;
 	}
+	Player *player = m_term == ChessType::white ?
+		m_white_chess_player : m_black_chess_player;
+	player->prepare();
 	return true;
 }
 
@@ -88,7 +108,7 @@ const BoardStatus& Game::get_status() const {
 	return m_board;
 }
 
-size_t Game::get_pieces_num(Player *player) const {
+size_t Game::get_pieces_num(const Player *player) const {
 	if (player == m_white_chess_player) {
 		return m_white_pieces_num;
 	} else if (player == m_black_chess_player) {
@@ -98,12 +118,19 @@ size_t Game::get_pieces_num(Player *player) const {
 	}
 }
 
-size_t Game::get_white_pieces_num(Player *player) const {
+size_t Game::get_white_pieces_num(const Player *player) const {
 	return m_white_pieces_num;
 }
 
-size_t Game::get_black_pieces_num(Player *player) const {
+size_t Game::get_black_pieces_num(const Player *player) const {
 	return m_black_pieces_num;
+}
+
+ChessType Game::get_chess_type(const Player *player) const {
+	if (player == nullptr) return ChessType::nil;
+	if (player == m_white_chess_player) return ChessType::white;
+	if (player == m_black_chess_player) return ChessType::black;
+	return ChessType::nil;
 }
 
 void Game::drop(int row, int col, ChessType type) {
@@ -122,7 +149,24 @@ void Game::drop(int row, int col, ChessType type) {
 	} else {
 		return;
 	}
-	m_board.drop(row, col, type);
+	bool succeed = m_board.drop(row, col, type);
+	if (succeed) {
+		if (m_board.judge(row, col)) {
+			m_finished   = true;
+			m_has_winner = true;
+		}
+		dropped(row, col, type);
+	}
+}
+
+void Game::dropped(int row, int col, ChessType type) {
+	for (auto &solve : m_dropped_slots) {
+		solve(row, col, type);
+	}
+}
+
+void Game::connect(DroppedSlot slot) {
+	m_dropped_slots.emplace_back(std::move(slot));
 }
 
 };

@@ -37,7 +37,7 @@ public:
 	virtual void mouse_move(int x, int y, int key_state);
 	virtual void click(int x, int y, int key_state);
 	virtual void double_click(int x, int y, int key_state);
-	virtual void wheel_change(int x, int y, int delta);
+	virtual void wheel_change(int x, int y, int delta, int key_state);
 
 	virtual void render();
 protected:

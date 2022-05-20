@@ -15,7 +15,7 @@ __五子棋层次__
 	- 可用棋子数查询 @抽象方法
 	- 落子及其判定
 	- 落子通知
-* Player: PlayerBase __`至多绑定至单个比赛的棋手对象`__
+* Player: PlayerBase __`至多绑定至单个棋局的棋手对象`__
 	- 可用棋子数查询 @绑定至当前参加的棋局
 	- 棋盘状态查询 @绑定至当前参加棋局的棋盘
 	- 棋局邀请处理
@@ -32,12 +32,12 @@ __五子棋层次__
 __细则__
 
 1. Game & Player
-	a. Game 可以邀请 Player 加入棋局
-	b. Player 可以拒绝 Game 的邀请
-	c. Player 接受 Game 的邀请且 Player 的对手不是自己则 Player 成功加入棋局
+	1. Game 可以邀请 Player 加入棋局
+	2. Player 可以拒绝 Game 的邀请
+	3. Player 接受 Game 的邀请且 Player 的对手不是自己则 Player 成功加入棋局
 2. term & prepare & drop
-	a. Game 通知轮到对棋的 Player
-	b. Player 收到通知执行 prepare 并在未来的某个时刻落子
-	c. 若 Player 落子成功，则更新棋盘，并通知 Game 以及其他对落子通知感兴趣的对象
-	d. Game 接受到落子成功的通知则补全落子消息并再次转发给其他对落子通知感兴趣的对象
-	e. Player 将持续处于当前回合直到 Game 收到切换回合的通知
+	1. Game 通知轮到对棋的 Player
+	2. Player 收到通知执行 prepare 并在未来的某个时刻落子
+	3. 若 Player 落子成功，则更新棋盘，并通知 Game 以及其他对落子通知感兴趣的对象
+	4. Game 接受到落子成功的通知则补全落子消息并再次转发给其他对落子通知感兴趣的对象
+	5. Player 将持续处于当前回合直到 Game 收到切换回合的通知
