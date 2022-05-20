@@ -33,9 +33,17 @@ public:
 	 */
 	bool judge(int row, int col) const;
 	/**
+	 * @brief get dropped status
+	 */
+	ChessType get(int row, int col) const;
+	/**
 	 * @brief check whether drop is available
 	 */
 	bool check(int row, int col) const;
+	/**
+	 * @brief reset board
+	 */
+	void reset();
 public:
 	using RecordSet = std::vector<std::tuple<int, int, ChessType>>;
 	RecordSet::iterator drop_begin();

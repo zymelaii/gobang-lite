@@ -4,15 +4,8 @@
 
 namespace gobang {
 
-BoardStatus::BoardStatus()
-	: m_timestamp_ptr(-1) {
-	for (auto &v : m_status) {
-		for (auto &type : v) {
-			type = ChessType::nil;
-		}
-	}
-	m_history.clear();
-	m_history.reserve(32);
+BoardStatus::BoardStatus() {
+	reset();
 }
 
 bool BoardStatus::drop(int row, int col, ChessType type) {
@@ -38,7 +31,7 @@ bool BoardStatus::undo() {
 }
 
 bool BoardStatus::redo() {
-	if (m_timestamp_ptr + 1 == m_history.size()) return false;
+	if ((size_t)m_timestamp_ptr + 1 == m_history.size()) return false;
 	const auto [row, col, value] = m_history[++m_timestamp_ptr];
 	m_status[row][col] = value;
 	return true;
@@ -78,8 +71,23 @@ bool BoardStatus::judge(int row, int col) const {
 	return false;
 }
 
+ChessType BoardStatus::get(int row, int col) const {
+	return m_status[row][col];
+}
+
 bool BoardStatus::check(int row, int col) const {
-	return m_status[row][col] == ChessType::nil;
+	return get(row, col) == ChessType::nil;
+}
+
+void BoardStatus::reset() {
+	for (auto &v : m_status) {
+		for (auto &type : v) {
+			type = ChessType::nil;
+		}
+	}
+	m_history.clear();
+	m_history.reserve(32);
+	m_timestamp_ptr = -1;
 }
 
 BoardStatus::RecordSet::iterator BoardStatus::drop_begin() {
