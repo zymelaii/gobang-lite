@@ -2,6 +2,7 @@
 #define PLAYER_H
 
 #include "gobang/board.h"
+#include "../ui/prototype.h"
 
 #include <functional>
 #include <vector>
@@ -9,8 +10,6 @@
 namespace gobang {
 
 class PlayerBase {
-public:
-	using DroppedSlot = std::function<void(int,int)>;
 public:
 	/**
 	 * @breif notify the player to prepare an action
@@ -31,16 +30,8 @@ public:
 	 * @breif inform the player to prepare to drop
 	 */
 	bool drop(int x, int y);
-
-	void connect(DroppedSlot slot);
-
-	template <typename F, typename T>
-	void connect(F &&slot, T *resolver) {
-		using namespace std::placeholders;
-		connect(std::bind(slot, resolver, _1, _2));
-	}
-private:
-	std::vector<DroppedSlot> m_dropped_slots;
+public:
+	ui::UiObject::signal<void(int,int)> dropped;
 };
 
 };

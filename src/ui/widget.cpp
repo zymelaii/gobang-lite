@@ -13,6 +13,14 @@ Widget::Widget()
 	m_posx = m_posy = CW_USEDEFAULT;
 	m_title = NULL;
 	m_title_len = 0;
+
+	set_min_bound();
+	set_max_bound();
+
+	m_preclicked = false;
+
+	m_enable_track = false;
+	m_on_tracking  = false;
 }
 
 Widget::Widget(int width, int height)
@@ -22,10 +30,19 @@ Widget::Widget(int width, int height)
 	m_title = NULL;
 	m_title_len = 0;
 
+	m_preclicked = false;
+
+	set_min_bound();
+	set_max_bound();
+
+	m_enable_track = false;
+	m_on_tracking  = false;
+
 	resize(width, height);
 }
 
 void Widget::resize(int width, int height) {
+
 	m_width = width;
 	m_height = height;
 	if (!m_setup) return;
@@ -63,14 +80,38 @@ void Widget::set_title(const char *title) {
 	}
 }
 
+void Widget::enable_track(bool enable) {
+	m_enable_track = enable;
+	if (!m_enable_track) {
+		m_on_tracking = false;
+	}
+}
+
+void Widget::redraw(bool erase) {
+	if (!m_setup) return;
+	RECT rect;
+	GetClientRect(m_hwnd, &rect);
+	InvalidateRect(m_hwnd, &rect, erase);
+}
+
+void Widget::set_min_bound(int width, int height) {
+	m_min_width  = width;
+	m_min_height = height;
+}
+
+void Widget::set_max_bound(int width, int height) {
+	m_max_width  = width;
+	m_max_height = height;
+}
+
 void Widget::setup(const Widget *parent) {
 	if (m_setup) return;
 
 	WNDCLASSEX wc = { };
-	wc.lpfnWndProc   = Widget::processor;
+	wc.lpfnWndProc   = Widget::dispatch;
 	wc.lpszClassName = get_class();
 	wc.style         = CS_DBLCLKS;
-	wc.hbrBackground = NULL;
+	wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
 	wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
 	wc.cbSize        = sizeof(WNDCLASSEX);
 
@@ -106,11 +147,12 @@ void Widget::show(int type) {
 }
 
 bool Widget::add_widget(Widget *widget) {
+	if (!m_setup) setup();
 	widget->setup(this);
 	return true;
 }
 
-LRESULT CALLBACK Widget::processor(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+LRESULT CALLBACK Widget::dispatch(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	Widget *widget = reinterpret_cast<Widget*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
 	switch (msg) {
@@ -160,11 +202,22 @@ LRESULT CALLBACK Widget::processor(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 		}
 		break;
 		case WM_GETMINMAXINFO: {
-			/**
-			 * @brief set min max size info
-			 */
+			if (widget == nullptr) break;
 			MINMAXINFO *info = reinterpret_cast<MINMAXINFO*>(lparam);
-			// TODO
+			int ncwidth = 0, ncheight = 0;
+			{
+				RECT window, client;
+				GetWindowRect(widget->m_hwnd, &window);
+				GetClientRect(widget->m_hwnd, &client);
+				ncwidth  = window.right - window.left - client.right;
+				ncheight = window.bottom - window.top - client.bottom;
+			}
+			auto [minw, minh] = widget->get_min_bound();
+			auto [maxw, maxh] = widget->get_max_bound();
+			if (minw != -1) info->ptMinTrackSize.x = minw + ncwidth;
+			if (minh != -1) info->ptMinTrackSize.y = minh + ncheight;
+			if (maxw != -1) info->ptMaxTrackSize.x = maxw + ncwidth;
+			if (maxh != -1) info->ptMaxTrackSize.y = maxh + ncheight;
 		}
 		break;
 		case WM_MOVE: {
@@ -174,9 +227,9 @@ LRESULT CALLBACK Widget::processor(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 		}
 		break;
 		case WM_SIZE: {
-			int client_width  = LOWORD(lparam);
-			int client_height = HIWORD(lparam);
-			widget->resized(client_width, client_height, wparam);
+			int width  = LOWORD(lparam);
+			int height = HIWORD(lparam);
+			widget->resized(width, height, wparam);
 		}
 		break;
 		case WM_MOUSEHOVER: {
@@ -187,6 +240,8 @@ LRESULT CALLBACK Widget::processor(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 		break;
 		case WM_MOUSELEAVE: {
 			widget->mouse_leave();
+			widget->m_preclicked  = false;
+			widget->m_on_tracking = false;
 		}
 		break;
 		case WM_LBUTTONDOWN:
@@ -195,6 +250,10 @@ LRESULT CALLBACK Widget::processor(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 			int posx = GET_X_LPARAM(lparam);
 			int posy = GET_Y_LPARAM(lparam);
 			widget->mouse_press(posx, posy, wparam);
+
+			widget->m_preclicked = true;
+			widget->m_clicked_posx = posx;
+			widget->m_clicked_posy = posy;
 		}
 		break;
 		case WM_LBUTTONUP:
@@ -203,7 +262,13 @@ LRESULT CALLBACK Widget::processor(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 			int posx = GET_X_LPARAM(lparam);
 			int posy = GET_Y_LPARAM(lparam);
 			widget->mouse_release(posx, posy, wparam);
-			widget->click(posx, posy, wparam);
+
+			if (widget->m_preclicked
+				&& posx == widget->m_clicked_posx
+				&& posy == widget->m_clicked_posy) {
+				widget->clicked(posx, posy, wparam);
+			}
+			widget->m_preclicked = false;
 		}
 		break;
 		case WM_LBUTTONDBLCLK:
@@ -211,13 +276,23 @@ LRESULT CALLBACK Widget::processor(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 		case WM_RBUTTONDBLCLK: {
 			int posx = GET_X_LPARAM(lparam);
 			int posy = GET_Y_LPARAM(lparam);
-			widget->double_click(posx, posy, wparam);
+			widget->double_clicked(posx, posy, wparam);
 		}
 		break;
 		case WM_MOUSEMOVE: {
 			int posx = GET_X_LPARAM(lparam);
 			int posy = GET_Y_LPARAM(lparam);
 			widget->mouse_move(posx, posy, wparam);
+
+			if (widget->m_enable_track && !widget->m_on_tracking) {
+				TRACKMOUSEEVENT track = { };
+				track.hwndTrack   = widget->m_hwnd;
+				track.dwFlags     = TME_HOVER | TME_LEAVE;
+				track.dwHoverTime = 1;
+				track.cbSize      = sizeof(TRACKMOUSEEVENT);
+				TrackMouseEvent(&track);
+				widget->m_on_tracking = true;
+			}
 		}
 		break;
 		case WM_MOUSEWHEEL: {
@@ -257,16 +332,21 @@ int Widget::height() const {
 	return m_height;
 }
 
-void Widget::created() {
-
+std::tuple<int, int> Widget::get_min_bound() const {
+	return std::make_tuple(m_min_width, m_min_height);
 }
 
-void Widget::moved(int x, int y) {
-
+std::tuple<int, int> Widget::get_max_bound() const {
+	return std::make_tuple(m_max_width, m_max_height);
 }
 
-void Widget::resized(int width, int height, int type) {
-
+Widget* Widget::parent() {
+	HWND hparent = GetParent(m_hwnd);
+	if (!hparent || hparent == m_hwnd ||
+		hparent == GetWindow(m_hwnd, GW_OWNER)) {
+		return nullptr;
+	}
+	return reinterpret_cast<Widget*>(GetWindowLongPtr(hparent, GWLP_USERDATA));
 }
 
 void Widget::mouse_hover(int x, int y) {
@@ -289,14 +369,6 @@ void Widget::mouse_move(int x, int y, int key_state) {
 
 }
 
-void Widget::click(int x, int y, int key_state) {
-
-}
-
-void Widget::double_click(int x, int y, int key_state) {
-
-}
-
 void Widget::wheel_change(int x, int y, int delta, int key_state) {
 	
 }
@@ -304,10 +376,6 @@ void Widget::wheel_change(int x, int y, int delta, int key_state) {
 void Widget::render() {
 	PAINTSTRUCT ps;
 	BeginPaint(m_hwnd, &ps);
-
-	RECT rect = {};
-	GetClientRect(m_hwnd, &rect);
-	FillRect(ps.hdc, &rect, (HBRUSH)GetStockObject(GRAY_BRUSH));
 
 	EndPaint(m_hwnd, &ps);
 }

@@ -38,11 +38,11 @@ bool Game::join(Player *player, ChessType type) {
 		if (type == ChessType::white) {
 			if (player == m_black_chess_player) return false;
 			m_white_chess_player = player;
-			player->connect(std::bind(&Game::drop, this, _1, _2, ChessType::white));
+			player->dropped.connect(std::bind(&Game::drop, this, _1, _2, ChessType::white));
 		} else {
 			if (player == m_white_chess_player) return false;
 			m_black_chess_player = player;
-			player->connect(std::bind(&Game::drop, this, _1, _2, ChessType::black));
+			player->dropped.connect(std::bind(&Game::drop, this, _1, _2, ChessType::black));
 		}
 		return true;
 	}
@@ -73,10 +73,6 @@ void Game::terminate() {
 	m_on_game    = false;
 	m_finished   = true;
 	m_has_winner = false;
-}
-
-bool Game::finished() const {
-	return m_finished;
 }
 
 bool Game::next_term() {
@@ -157,16 +153,6 @@ void Game::drop(int row, int col, ChessType type) {
 		}
 		dropped(row, col, type);
 	}
-}
-
-void Game::dropped(int row, int col, ChessType type) {
-	for (auto &solve : m_dropped_slots) {
-		solve(row, col, type);
-	}
-}
-
-void Game::connect(DroppedSlot slot) {
-	m_dropped_slots.emplace_back(std::move(slot));
 }
 
 };

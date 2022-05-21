@@ -15,20 +15,38 @@ class View : public Widget {
 public:
 	View()
 		: Widget() {
-		UiObject::reset(__class__());
-		join_players();
-		restart(true);
+		init();
 	}
 	View(int width, int height)
 		: Widget(width, height) {
+		init();
+	}
+
+	void init() {
+		using namespace std::placeholders;
 		UiObject::reset(__class__());
+
+		enable_track();
+
 		join_players();
-		restart(true);
+
+		created.connect(std::bind(&View::reset_status, this));
+		resized.connect(std::bind(&View::reset_status, this));
+		double_clicked.connect(std::bind(&View::reset_status, this));
+
+		clicked.connect([this](int, int, int) {
+			if (!m_is_user_term) return;
+			if (m_predrop_row != -1 && m_predrop_col != -1) {
+				m_user->drop(m_predrop_row, m_predrop_col);
+				m_predrop_row = m_predrop_col = -1;
+			}
+		});
 	}
 
 	void reset_status();
 	void set_origin(int row, int col);
 	std::tuple<int, int> get_nearest(int x, int y);
+	gobang::Game* game();
 	void get_board(RECT *rc);
 	void get_drop(int row, int col, POINT *pt);
 
@@ -40,11 +58,6 @@ protected:
 	void on_drag(int x, int y);
 	void end_drag();
 public:
-	void created() override;
-	void resized(int width, int height, int type) override;
-
-	void double_click(int x, int y, int key_state) override;
-
 	void mouse_press(int x, int y, int key_state) override;
 	void mouse_release(int x, int y, int key_state) override;
 	void mouse_leave() override;

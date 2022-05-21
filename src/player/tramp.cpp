@@ -21,7 +21,8 @@ void Tramp::prepare() {
 
 	std::packaged_task<void()> task([this, row, col]() {
 		Sleep(rand() % 3000 + 600);
-		this->drop(row, col);
+		drop(row, col);
+		prepared();
 	});
     std::thread(std::move(task)).detach();
 }

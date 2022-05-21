@@ -17,3 +17,9 @@ endif()
 
 include_directories(./src)
 add_subdirectory(./src)
+
+install(TARGETS ${PROJECT_NAME}
+	DESTINATION ${CMAKE_BINARY_DIR})
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets
+	DESTINATION ${CMAKE_BINARY_DIR})
+

@@ -16,6 +16,8 @@ void View::reset_status() {
 	m_predrop_row = m_predrop_col = -1;
 
 	m_on_drag = false;
+
+	redraw();
 }
 
 void View::set_origin(int row, int col) {
@@ -30,24 +32,32 @@ void View::set_origin(int row, int col) {
 }
 
 std::tuple<int, int> View::get_nearest(int x, int y) {
-	double dist = 1e6;
-	int row = -1, col = -1;
-	for (int i = 0; i < gobang::BoardStatus::GridNumber; ++i) {
-		for (int j = 0; j < gobang::BoardStatus::GridNumber; ++j) {
-			RECT board;
-			POINT pt;
-			get_board(&board);
-			get_drop(i, j, &pt);
-			if (!PtInRect(&board, pt)) continue;
-			double t = (pt.x - x) * (pt.x - x) + (pt.y - y) * (pt.y - y);
-			if (t < dist) {
-				dist = t;
-				row = i;
-				col = j;
-			}
-		}
+	constexpr size_t N = gobang::BoardStatus::GridNumber;
+
+	RECT board;
+	get_board(&board);
+
+	double ix = (x - board.left) * 1.0 / m_grid_width;
+	double iy = (y - board.top) * 1.0 / m_grid_width;
+	if (ix < 0) ix = 0;
+	if (ix >= N - 1) ix = N - 1;
+	if (iy < 0) iy = 0;
+	if (iy >= N - 1) iy = N - 1;
+
+	int col = ((int)floor(ix * 2) + 1) / 2;
+	int row = ((int)floor(iy * 2) + 1) / 2;
+
+	POINT pt;
+	get_drop(row, col, &pt);
+	if (!PtInRect(&board, pt)) {
+		row = col = -1;
 	}
+
 	return std::make_tuple(row, col);
+}
+
+gobang::Game* View::game() {
+	return &m_game;
 }
 
 void View::get_board(RECT *rc) {
@@ -72,28 +82,33 @@ bool View::restart(bool force) {
 }
 
 void View::join_players() {
-	m_black_player = new ClientUser([this]() {
-		this->m_is_user_term = true;
-		this->m_user = dynamic_cast<ClientUser*>(this->m_black_player);
-	});
-	m_game.join(m_black_player, ChessType::black);
+	{
+		auto user = new ClientUser;
+		user->prepared.connect([this]() {
+			m_is_user_term = true;
+			m_user = dynamic_cast<ClientUser*>(m_black_player);
+		});
+		m_black_player = user;
+		m_game.join(m_black_player, ChessType::black);
+	}
 
-	m_white_player = new Tramp;
-	m_game.join(m_white_player, ChessType::white);
+	{
+		auto tramp = new Tramp;
+		tramp->prepared.connect(std::bind(&View::redraw, this, false));
+		m_white_player = tramp;
+		m_game.join(m_white_player, ChessType::white);
+	}
 
-	m_game.connect([this](int x, int y, ChessType type) {
+	m_game.dropped.connect([this](int x, int y, ChessType type) {
+		redraw();
+
 		if (type == ChessType::black) {
-			this->m_is_user_term = false;
-			this->m_user = nullptr;
+			m_is_user_term = false;
+			m_user = nullptr;
 		}
-		bool succeed = this->m_game.next_term();
+		bool succeed = m_game.next_term();
 		if (!succeed) {
-			MessageBox(
-				m_hwnd,
-				"    Chess game is going to be restart.    ",
-				" INFO ",
-				MB_OK);
-			this->restart();
+			m_game.finished();
 		}
 	});
 
@@ -104,13 +119,6 @@ void View::begin_drag(int x, int y) {
 	m_drag_start_posx = x;
 	m_drag_start_posy = y;
 	m_on_drag = true;
-
-	TRACKMOUSEEVENT track = { };
-	track.hwndTrack   = m_hwnd;
-	track.dwFlags     = TME_LEAVE;
-	track.dwHoverTime = HOVER_DEFAULT;
-	track.cbSize      = sizeof(TRACKMOUSEEVENT);
-	TrackMouseEvent(&track);
 
 	HCURSOR cursor = LoadCursor(NULL, IDC_HAND);
 	SetClassLongPtr(m_hwnd, GCLP_HCURSOR, (LONG_PTR)cursor);
@@ -125,7 +133,7 @@ void View::on_drag(int x, int y) {
 	m_drag_start_posx = x;
 	m_drag_start_posy = y;
 
-	InvalidateRect(m_hwnd, NULL, FALSE);
+	redraw();
 }
 
 void View::end_drag() {
@@ -139,30 +147,8 @@ void View::mouse_leave() {
 	end_drag();
 }
 
-void View::created() {
-	reset_status();
-}
-
-void View::resized(int width, int height, int type) {
-	reset_status();
-	InvalidateRect(m_hwnd, NULL, FALSE);
-}
-
-void View::double_click(int x, int y, int key_state) {
-	reset_status();
-	InvalidateRect(m_hwnd, NULL, FALSE);
-}
-
 void View::mouse_press(int x, int y, int key_state) {
 	begin_drag(x, y);
-
-	if (!m_is_user_term) return;
-
-	if (m_predrop_row != -1 && m_predrop_col != -1) {
-		m_user->drop(m_predrop_row, m_predrop_col);
-		InvalidateRect(m_hwnd, NULL, FALSE);
-		m_predrop_row = m_predrop_col = -1;
-	}
 }
 
 void View::mouse_release(int x, int y, int key_state) {
@@ -186,11 +172,11 @@ void View::mouse_move(int x, int y, int key_state) {
 		if (row != m_predrop_row || col != m_predrop_col) {
 			m_predrop_row = row;
 			m_predrop_col = col;
-			InvalidateRect(m_hwnd, NULL, FALSE);
+			redraw();
 		}
-	} else {
+	} else if (m_predrop_row != -1 || m_predrop_col != -1) {
 		m_predrop_row = m_predrop_col = -1;
-		InvalidateRect(m_hwnd, NULL, FALSE);
+		redraw();
 	}
 }
 
@@ -212,7 +198,7 @@ void View::wheel_change(int x, int y, int delta, int key_state) {
 		}
 	}
 
-	InvalidateRect(m_hwnd, NULL, FALSE);
+	redraw();
 }
 
 void View::render() {
