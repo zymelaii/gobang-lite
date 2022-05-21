@@ -2,6 +2,10 @@
 #define UI_PROTOTYPE_H
 
 #include <string.h>
+#include <stddef.h>
+#include <vector>
+#include <functional>
+#include <type_traits>
 
 namespace gobang::ui {
 
@@ -29,6 +33,22 @@ virtual char* __class__() const override { \
 #endif
 
 class UiObject {
+public:
+    template <typename Fn> struct signal;
+    template <typename RetType, typename... Args>
+    struct signal<RetType(Args...)> {
+        void connect(std::function<RetType(Args...)> &&slot) {
+            m_slots.emplace_back(std::move(slot));
+        }
+        RetType operator()(Args... args) {
+            m_slots.shrink_to_fit();
+            for (auto &slot : m_slots) {
+                slot(args...);
+            }
+        }
+    private:
+        std::vector<std::function<RetType(Args...)>> m_slots;
+    };
 public:
     const char* get_class() const;
 protected:

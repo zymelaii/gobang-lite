@@ -2,15 +2,13 @@
 #define PLAYER_CLIENT_H
 
 #include "../gobang/gobang.h"
-
-#include <functional>
+#include "../ui/prototype.h"
 
 class ClientUser : public gobang::Player {
 public:
-	ClientUser(std::function<void()> prepared);
 	void prepare() override;
-private:
-	std::function<void()> m_prepare_notify;
+public:
+	gobang::ui::UiObject::signal<void()> prepared;
 };
 
 #endif /*PLAYER_CLIENT_H*/
