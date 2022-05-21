@@ -107,6 +107,7 @@ void Widget::set_max_bound(int width, int height) {
 void Widget::setup(const Widget *parent) {
 	if (m_setup) return;
 
+
 	WNDCLASSEX wc = { };
 	wc.lpfnWndProc   = Widget::dispatch;
 	wc.lpszClassName = get_class();
@@ -174,6 +175,7 @@ LRESULT CALLBACK Widget::dispatch(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpa
 					window.bottom - client.bottom + widget->m_height,
 					SWP_NOMOVE | SWP_NOZORDER);
 			}
+
 			widget->created();
 		}
 		break;

@@ -134,5 +134,6 @@ public:
 int main(int argc, const char *argv[]) {
 	GobangLiteApp app(argc, argv);
 	app.set_title("Gobang Lite");
+
 	return app.exec();
 }

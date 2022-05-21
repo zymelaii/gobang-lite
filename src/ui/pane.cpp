@@ -11,6 +11,7 @@ Pane::Pane()
 	});
 
 	m_transparent = false;
+
 	setbkcolor(RGB(255, 255, 255));
 }
 
@@ -23,6 +24,7 @@ Pane::Pane(int width, int height)
 	});
 
 	m_transparent = false;
+
 	setbkcolor(RGB(255, 255, 255));
 }
 

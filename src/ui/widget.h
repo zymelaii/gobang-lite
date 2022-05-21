@@ -3,6 +3,7 @@
 
 #include "prototype.h"
 
+#include <stdio.h>
 #include <windows.h>
 #include <windowsx.h>
 #include <tuple>
@@ -18,6 +19,8 @@ public:
 	void resize(int width, int height);
 	void move(int x, int y);
 	void set_title(const char *title);
+	void enable_track(bool enable = true);
+	void redraw(bool erase = false);
 
 	void set_min_bound(int width = -1, int height = -1);
 	void set_max_bound(int width = -1, int height = -1);
