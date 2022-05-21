@@ -25,9 +25,6 @@ public:
 	void set_min_bound(int width = -1, int height = -1);
 	void set_max_bound(int width = -1, int height = -1);
 
-	void enable_track(bool enable = true);
-	void redraw(bool erase = false);
-
 	void setup(const Widget *parent = nullptr);
 public:
 	void show(int type = SW_SHOW);
