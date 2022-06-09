@@ -27,7 +27,7 @@ size_t Player::query() {
 
 Game::Game()
 	: m_white_chess_player(nullptr), m_black_chess_player(nullptr),
-	m_on_game(false), m_finished(true) {
+	m_on_game(false), m_finished(true), m_enable_forbidden_hand(true) {
 
 }
 
@@ -97,7 +97,74 @@ bool Game::next_term() {
 }
 
 ChessType Game::get_winner() const {
-	return m_has_winner ? ChessType::nil : m_term;
+	return m_has_winner ? m_term : ChessType::nil;
+}
+
+void Game::enable_forbidden_hand(bool state) {
+	m_enable_forbidden_hand = state;
+}
+
+bool Game::judge_forbidden_hand(int row, int col) {
+	int counts[4] = {
+		m_board.count_in_direction(row, col, Direction::Horizental),
+		m_board.count_in_direction(row, col, Direction::Vertical),
+		m_board.count_in_direction(row, col, Direction::LeftOblique),
+		m_board.count_in_direction(row, col, Direction::RightOblique),
+	};
+	int counts_skip_1[4] = {
+		m_board.count_in_direction_extend(row, col, Direction::Horizental, 1),
+		m_board.count_in_direction_extend(row, col, Direction::Vertical, 1),
+		m_board.count_in_direction_extend(row, col, Direction::LeftOblique, 1),
+		m_board.count_in_direction_extend(row, col, Direction::RightOblique, 1),
+	};
+	m_board.undo();
+	int counts_skip_1_before[4] = {
+		m_board.count_in_direction_extend(row, col, Direction::Horizental, 1),
+		m_board.count_in_direction_extend(row, col, Direction::Vertical, 1),
+		m_board.count_in_direction_extend(row, col, Direction::LeftOblique, 1),
+		m_board.count_in_direction_extend(row, col, Direction::RightOblique, 1),
+	};
+	m_board.redo();
+
+	for (auto n : counts) {
+		if (n == 5) {
+			return false;
+		}
+	}
+
+	for (auto n : counts) {
+		if (n > 5) {
+			return true;
+		}
+	}
+
+	printf("skip 1 count {before-drop:[%d,%d,%d,%d], now:[%d,%d,%d,%d]}\n",
+		counts_skip_1_before[0], counts_skip_1_before[1],
+		counts_skip_1_before[2], counts_skip_1_before[3],
+		counts_skip_1[0], counts_skip_1[1], counts_skip_1[2], counts_skip_1[3]);
+
+	for (int i = 0; i < 4; ++i) {
+		if (counts_skip_1[i] < 4) continue;
+		for (int j = i + 1; j < 4; ++j) {
+			if (counts_skip_1[j] < 4) continue;
+			if (counts_skip_1_before[i] < 4 && counts_skip_1_before[j] < 4) {
+				return true;
+			}
+		}
+	}
+
+	for (int i = 0; i < 4; ++i) {
+		if (counts_skip_1[i] < 3) continue;
+		for (int j = i + 1; j < 4; ++j) {
+			if (counts_skip_1[j] < 3) continue;
+			if (counts_skip_1_before[i] < counts_skip_1[i]
+				&& counts_skip_1_before[j] < counts_skip_1[j]) {
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 const BoardStatus& Game::get_status() const {
@@ -146,6 +213,13 @@ void Game::drop(int row, int col, ChessType type) {
 		return;
 	}
 	bool succeed = m_board.drop(row, col, type);
+	if (succeed && type == ChessType::black) {
+		if (judge_forbidden_hand(row, col)) {
+			succeed = false;
+			m_board.undo();
+			caught_forbidden_hand(row, col);
+		}
+	}
 	if (succeed) {
 		if (m_board.judge(row, col)) {
 			m_finished   = true;

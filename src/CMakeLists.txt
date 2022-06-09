@@ -7,7 +7,7 @@ target_link_options(${PROJECT_NAME} PRIVATE ${LD_WINONLY_FLAG})
 target_compile_definitions(${PROJECT_NAME} PRIVATE NDEBUG)
 
 if (MSVC)
-	target_compile_options(${PROJECT_NAME} PRIVATE /O2)
+	# target_compile_options(${PROJECT_NAME} PRIVATE /O2)
 else()
 	if (STATIC_LINK)
 		target_link_options(${PROJECT_NAME} PRIVATE -static)

@@ -20,7 +20,7 @@ public:
 	void move(int x, int y);
 	void set_title(const char *title);
 	void enable_track(bool enable = true);
-	void redraw(bool erase = false);
+	virtual void redraw(bool erase = false);
 
 	void set_min_bound(int width = -1, int height = -1);
 	void set_max_bound(int width = -1, int height = -1);
@@ -32,6 +32,8 @@ public:
 public:
 	int width() const;
 	int height() const;
+	int x() const;
+	int y() const;
 
 	std::tuple<int, int> get_min_bound() const;
 	std::tuple<int, int> get_max_bound() const;
@@ -43,6 +45,7 @@ public: // signals
 	UiObject::signal<void(int,int,int)> resized;
 	UiObject::signal<void(int,int,int)> clicked;
 	UiObject::signal<void(int,int,int)> double_clicked;
+	UiObject::signal<void(int)> key_down;
 public: // events
 	virtual void mouse_hover(int x, int y);
 	virtual void mouse_leave();

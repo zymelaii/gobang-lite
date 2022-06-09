@@ -48,6 +48,15 @@ void AeroPane::set_border(bool draw_border) {
 	redraw();
 }
 
+void AeroPane::redraw(bool erase) {
+	if (parent() != NULL) {
+		HWND parent = GetParent(m_hwnd);
+		RECT client = { x(), y(), x() + width(), y() + height() };
+		InvalidateRect(parent, &client, false);
+	}
+	Widget::redraw();
+}
+
 void AeroPane::render() {
 	PAINTSTRUCT ps;
 	BeginPaint(m_hwnd, &ps);
@@ -55,41 +64,41 @@ void AeroPane::render() {
 	HDC hdc = ps.hdc;
 
 	HDC hmdc = CreateCompatibleDC(hdc);
-	HBITMAP hbmp = CreateCompatibleBitmap(hdc, m_width, m_height);
+	HBITMAP hbmp = CreateCompatibleBitmap(hdc, width(), height());
 	SelectObject(hmdc, hbmp);
 	SelectObject(hmdc, (HBRUSH)GetStockObject(NULL_BRUSH));
 
-	BitBlt(hmdc, 0, 0, m_width, m_height, hdc, 0, 0, SRCCOPY);
+	BitBlt(hmdc, 0, 0, width(), height(), hdc, 0, 0, SRCCOPY);
 
-	HRGN clipped = CreateRoundRectRgn(0, 0, m_width, m_height, 16, 16);
+	HRGN clipped = CreateRoundRectRgn(0, 0, width(), height(), 16, 16);
 	SelectObject(hmdc, clipped);
 
 	BITMAPINFO bminfo = { };
 	bminfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-	GetDIBits(hmdc, hbmp, 0, m_height, NULL, &bminfo, DIB_RGB_COLORS);
-	auto bytes = new uint8_t[m_width * m_height * 4];
-	GetDIBits(hmdc, hbmp, 0, m_height, bytes, &bminfo, DIB_RGB_COLORS);
+	GetDIBits(hmdc, hbmp, 0, height(), NULL, &bminfo, DIB_RGB_COLORS);
+	auto bytes = new uint8_t[width() * height() * 4];
+	GetDIBits(hmdc, hbmp, 0, height(), bytes, &bminfo, DIB_RGB_COLORS);
 
 	const int r = 4;
 
 	auto get = [&](int row, int col, int i) {
 		if (row < 0) row = 0;
-		if (row >= m_height) row = m_height - 1;
+		if (row >= height()) row = height() - 1;
 		if (col < 0) col = 0;
-		if (col >= m_width) col = m_width - 1;
-		return bytes[(row * m_width + col) * 4 + i];
+		if (col >= width()) col = width() - 1;
+		return bytes[(row * width() + col) * 4 + i];
 	};
 
 	auto set = [&](int row, int col, int i, uint8_t value) {
 		if (row < 0) return;
-		if (row >= m_height) return;
+		if (row >= height()) return;
 		if (col < 0) return;
-		if (col >= m_width) return;
-		bytes[(row * m_width + col) * 4 + i] = value;
+		if (col >= width()) return;
+		bytes[(row * width() + col) * 4 + i] = value;
 	};
 
-	for (int row = 0; row < m_height; ++row) {
-		for (int col = 0; col < m_width; ++col) {
+	for (int row = 0; row < height(); ++row) {
+		for (int col = 0; col < width(); ++col) {
 			int dx = rand() % (2 * r + 1) - r;
 			int dy = rand() % (2 * r + 1) - r;
 
@@ -104,9 +113,9 @@ void AeroPane::render() {
 	}
 
 	if (m_draw_border) {
-		SetDIBits(hmdc, hbmp, 0, m_height, bytes, &bminfo, DIB_RGB_COLORS);
-		RoundRect(hmdc, 1, 1, m_width - 1, m_height - 1, 16, 16);
-		GetDIBits(hmdc, hbmp, 0, m_height, bytes, &bminfo, DIB_RGB_COLORS);
+		SetDIBits(hmdc, hbmp, 0, height(), bytes, &bminfo, DIB_RGB_COLORS);
+		RoundRect(hmdc, 1, 1, width() - 1, height() - 1, 16, 16);
+		GetDIBits(hmdc, hbmp, 0, height(), bytes, &bminfo, DIB_RGB_COLORS);
 	}
 
 	double kernel2[3][3] = {
@@ -115,8 +124,8 @@ void AeroPane::render() {
 		{ 0.094742, 0.118318, 0.094742 },
 	};
 
-	for (int row = 0; row < m_height; ++row) {
-		for (int col = 0; col < m_width; ++col) {
+	for (int row = 0; row < height(); ++row) {
+		for (int col = 0; col < width(); ++col) {
 			double value[3] = { 0.0, 0.0, 0.0 };
 			for (int dy = -1; dy <= 1; ++dy) {
 				for (int dx = -1; dx <= 1; ++dx) {
@@ -131,8 +140,8 @@ void AeroPane::render() {
 		}
 	}
 
-	SetDIBits(hmdc, hbmp, 0, m_height, bytes, &bminfo, DIB_RGB_COLORS);
-	BitBlt(hdc, 0, 0, m_width, m_height, hmdc, 0, 0, SRCCOPY);
+	SetDIBits(hmdc, hbmp, 0, height(), bytes, &bminfo, DIB_RGB_COLORS);
+	BitBlt(hdc, 0, 0, width(), height(), hmdc, 0, 0, SRCCOPY);
 	delete[] bytes;
 
 	DeleteObject(clipped);

@@ -14,6 +14,7 @@ void View::reset_status() {
 	m_grid_width = 32;
 
 	m_predrop_row = m_predrop_col = -1;
+	m_drop_on_keyctrl = false;
 
 	m_on_drag = false;
 
@@ -160,7 +161,7 @@ void View::mouse_move(int x, int y, int key_state) {
 		on_drag(x, y);
 		return;
 	}
-	
+
 	if (!m_is_user_term) return;
 
 	POINT pt;
@@ -170,11 +171,13 @@ void View::mouse_move(int x, int y, int key_state) {
 	auto board = m_game.get_status();
 	if (board.check(row, col) && dist < 0.36 * m_grid_width) {
 		if (row != m_predrop_row || col != m_predrop_col) {
+			m_drop_on_keyctrl = false;
 			m_predrop_row = row;
 			m_predrop_col = col;
 			redraw();
 		}
-	} else if (m_predrop_row != -1 || m_predrop_col != -1) {
+	} else if (m_predrop_row != -1 && m_predrop_col != -1
+		&& !m_drop_on_keyctrl) {
 		m_predrop_row = m_predrop_col = -1;
 		redraw();
 	}
@@ -198,10 +201,87 @@ void View::wheel_change(int x, int y, int delta, int key_state) {
 		}
 	}
 
+	m_preview_cursor->resize(m_grid_width * 0.8, m_grid_width * 0.8);
+
 	redraw();
 }
 
-void View::render() {
+void View::key_down(int key) {
+	if (m_predrop_row != -1 && m_predrop_col != -1) {
+		switch (key) {
+			case VK_LEFT: {
+				if (m_predrop_col > 0
+					&& game()->get_status().check(m_predrop_row, m_predrop_col - 1)) {
+					--m_predrop_col;
+				}
+			}
+			break;
+			case VK_UP: {
+				if (m_predrop_row > 0
+					&& game()->get_status().check(m_predrop_row - 1, m_predrop_col)) {
+					--m_predrop_row;
+				}
+			}
+			break;
+			case VK_RIGHT: {
+				if (m_predrop_col + 1 < BoardStatus::GridNumber
+					&& game()->get_status().check(m_predrop_row, m_predrop_col + 1)) {
+					++m_predrop_col;
+				}
+			}
+			break;
+			case VK_DOWN: {
+				if (m_predrop_row + 1 < BoardStatus::GridNumber
+					&& game()->get_status().check(m_predrop_row + 1, m_predrop_col)) {
+					++m_predrop_row;
+				}
+			}
+			break;
+			case VK_RETURN: {
+				POINT pt;
+				get_drop(m_predrop_row, m_predrop_col, &pt);
+				m_drop_on_keyctrl = false;
+				clicked(pt.x, pt.y, 0);
+			}
+			break;
+		}
+	} else {
+		int row = 7, col = 7;
+		if (game()->get_status().check(row, col)) {
+			m_predrop_row = row;
+			m_predrop_col = col;
+		} else {
+			switch (key) {
+				case VK_LEFT: {
+					--col;
+				}
+				break;
+				case VK_UP: {
+					--row;
+				}
+				break;
+				case VK_RIGHT: {
+					++col;
+				}
+				break;
+				case VK_DOWN: {
+					++row;
+				}
+				break;
+			}
+			if (game()->get_status().check(row, col)) {
+				m_predrop_row = row;
+				m_predrop_col = col;
+			}
+		}
+	}
+	if (m_predrop_row != -1 && m_predrop_col != -1) {
+		m_drop_on_keyctrl = true;
+	}
+	redraw();
+}
+
+void View::draw_board(HDC hdc) {
 	RECT rc_board = {}, rect = {};
 	get_board(&rc_board);
 	GetClientRect(m_hwnd, &rect);
@@ -220,26 +300,16 @@ void View::render() {
 		rc_board.top += (int)ceil(-rc_board.top * 1.0 / m_grid_width) * m_grid_width;
 	}
 
-	PAINTSTRUCT ps;
-	BeginPaint(m_hwnd, &ps);
-
-	HDC hmdc = CreateCompatibleDC(ps.hdc);
-	HBITMAP hbitmap = CreateCompatibleBitmap(ps.hdc, m_width, m_height);
-	SelectObject(hmdc, hbitmap);
-	SelectObject(hmdc, (HBRUSH)GetStockObject(BLACK_BRUSH));
-
-	HBRUSH wooden_brush = CreateSolidBrush(RGB(251, 228, 152));
-	FillRect(hmdc, &rect, wooden_brush);
-	DeleteObject(wooden_brush);
+	HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, (HBRUSH)GetStockObject(BLACK_BRUSH));
 
 	for (int x = rc_board.left; x <= m_width && x <= to_x; x += m_grid_width) {
-		MoveToEx(hmdc, x, from_y, NULL);
-		LineTo(hmdc, x, to_y);
+		MoveToEx(hdc, x, from_y, NULL);
+		LineTo(hdc, x, to_y);
 	}
 
 	for (int y = rc_board.top; y <= m_height && y <= to_y; y += m_grid_width) {
-		MoveToEx(hmdc, from_x, y, NULL);
-		LineTo(hmdc, to_x, y);
+		MoveToEx(hdc, from_x, y, NULL);
+		LineTo(hdc, to_x, y);
 	}
 
 	POINT emphasis[] = {{3, 3}, {11, 3}, {7, 7}, {3, 11}, {11, 11}};
@@ -249,20 +319,26 @@ void View::render() {
 		get_drop(emphasis[i].x, emphasis[i].y, &pt);
 		RECT rdot = { pt.x - r, pt.y - r, pt.x + r, pt.y + r };
 		if (PtInRect(&rect, pt)) {
-			FillRect(hmdc, &rdot, (HBRUSH)GetStockObject(BLACK_BRUSH));
+			FillRect(hdc, &rdot, (HBRUSH)GetStockObject(BLACK_BRUSH));
 		}
 	}
 
 	if (m_is_user_term && m_predrop_col != -1 && m_predrop_row != -1) {
 		POINT pt;
 		get_drop(m_predrop_row, m_predrop_col, &pt);
-		int r = m_grid_width * 0.32;
-		RECT predrop = { pt.x - r, pt.y - r, pt.x + r, pt.y + r };
-		HBRUSH predrop_brush = CreateSolidBrush(RGB(255, 0, 0));
-		SelectObject(hmdc, (HPEN)GetStockObject(NULL_PEN));
-		SelectObject(hmdc, predrop_brush);
-		Ellipse(hmdc, predrop.left, predrop.top, predrop.right, predrop.bottom);
-		DeleteObject(predrop_brush);
+		// int r = m_grid_width * 0.32;
+		// RECT predrop = { pt.x - r, pt.y - r, pt.x + r, pt.y + r };
+		// HBRUSH predrop_brush = CreateSolidBrush(RGB(255, 0, 0));
+		// SelectObject(hdc, (HPEN)GetStockObject(NULL_PEN));
+		// SelectObject(hdc, predrop_brush);
+		// Ellipse(hdc, predrop.left, predrop.top, predrop.right, predrop.bottom);
+		// DeleteObject(predrop_brush);
+		m_preview_cursor->move(
+			pt.x - m_preview_cursor->width() / 2,
+			pt.y - m_preview_cursor->height() / 2);
+		m_preview_cursor->show(SW_SHOW);
+	} else {
+		m_preview_cursor->show(SW_HIDE);
 	}
 
 	auto board = m_game.get_status();
@@ -273,19 +349,14 @@ void View::render() {
 		int r = m_grid_width * 0.36;
 		RECT drop = { pt.x - r, pt.y - r, pt.x + r, pt.y + r };
 		if (type == ChessType::white) {
-			SelectObject(hmdc, (HBRUSH)GetStockObject(WHITE_BRUSH));
-			SelectObject(hmdc, (HPEN)GetStockObject(WHITE_PEN));
+			SelectObject(hdc, (HBRUSH)GetStockObject(WHITE_BRUSH));
+			SelectObject(hdc, (HPEN)GetStockObject(WHITE_PEN));
 		} else {
-			SelectObject(hmdc, (HBRUSH)GetStockObject(BLACK_BRUSH));
-			SelectObject(hmdc, (HPEN)GetStockObject(BLACK_PEN));
+			SelectObject(hdc, (HBRUSH)GetStockObject(BLACK_BRUSH));
+			SelectObject(hdc, (HPEN)GetStockObject(BLACK_PEN));
 		}
-		Ellipse(hmdc, drop.left, drop.top, drop.right, drop.bottom);
+		Ellipse(hdc, drop.left, drop.top, drop.right, drop.bottom);
 	}
 
-	BitBlt(ps.hdc, 0, 0, m_width, m_height, hmdc, 0, 0, SRCCOPY);
-
-	DeleteDC(hmdc);
-	DeleteObject(hbitmap);
-
-	EndPaint(m_hwnd, &ps);
+	SelectObject(hdc, oldBrush);
 }

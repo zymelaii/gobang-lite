@@ -22,6 +22,8 @@ Button::Button()
 
 	m_bgcolor_c = m_bgcolor;
 	m_fgcolor_c = m_fgcolor;
+
+	resized.connect(std::bind(&Button::redraw, this, false));
 }
 
 Button::Button(int width, int height)
@@ -41,6 +43,8 @@ Button::Button(int width, int height)
 
 	m_bgcolor_c = m_bgcolor;
 	m_fgcolor_c = m_fgcolor;
+
+	resized.connect(std::bind(&Button::redraw, this, false));
 }
 
 void Button::set_text(const char *text) {
@@ -139,6 +143,11 @@ void Button::render() {
 	HBITMAP hbitmap = CreateCompatibleBitmap(ps.hdc, m_width, m_height);
 	HBRUSH hbrush = CreateSolidBrush(m_bgcolor_c);
 	HPEN hpen = CreatePen(PS_SOLID, 1, m_fgcolor_c);
+	HFONT hfont = CreateFont(
+		16, 0, 0, 0, FW_DONTCARE, false, false, false,
+		DEFAULT_CHARSET, OUT_OUTLINE_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+		VARIABLE_PITCH, "Courier New");
+	SelectObject(hmdc, hfont);
 	SelectObject(hmdc, hbitmap);
 	SelectObject(hmdc, hbrush);
 	SelectObject(hmdc, hpen);
@@ -150,6 +159,7 @@ void Button::render() {
 	DrawText(hmdc, m_text, strlen(m_text), &rc_button, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
 	BitBlt(ps.hdc, 0, 0, m_width, m_height, hmdc, 0, 0, SRCCOPY);
 
+	DeleteObject(hfont);
 	DeleteObject(hpen);
 	DeleteObject(hbrush);
 	DeleteObject(hbitmap);

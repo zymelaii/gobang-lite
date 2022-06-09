@@ -10,6 +10,7 @@
 namespace gobang {
 
 enum class ChessType { black, white, nil };
+enum class Direction { Horizental, Vertical, LeftOblique, RightOblique };
 
 class BoardStatus {
 public:
@@ -28,6 +29,16 @@ public:
 	 * @breif redo chess-drop-undo
 	 */
 	bool redo();
+	/**
+	 * @brief get chess number in the specific direction
+	 */
+	int count_in_direction(int row, int col, Direction d) const;
+	/**
+	 * @brief get chess number in the specific direction but enable $n blanks
+	 * @note if $m_status[row][col] got ChessType::nil, target chesstype will be
+	 *  set to ChessType::black defaultly
+	 */
+	int count_in_direction_extend(int row, int col, Direction d, int n) const;
 	/**
 	 * @breif judge win-condition at (x,y)
 	 */

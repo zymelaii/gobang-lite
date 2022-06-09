@@ -28,6 +28,9 @@ public:
 	bool next_term();
 	ChessType get_winner() const;
 public:
+	void enable_forbidden_hand(bool state);
+	bool judge_forbidden_hand(int row, int col);
+public:
 	const BoardStatus& get_status() const;
 	size_t get_pieces_num(const Player *player) const;
 	size_t get_white_pieces_num(const Player *player) const;
@@ -36,6 +39,7 @@ public:
 public:
 	ui::UiObject::signal<void(int,int,ChessType)> dropped;
 	ui::UiObject::signal<void()> finished;
+	ui::UiObject::signal<void(int,int)> caught_forbidden_hand;
 protected:
 	void drop(int row, int col, ChessType type);
 private:
@@ -52,6 +56,7 @@ private:
 	bool m_on_game;
 	bool m_finished;
 	bool m_has_winner;
+	bool m_enable_forbidden_hand;
 };
 
 };

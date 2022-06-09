@@ -13,6 +13,7 @@ public:
 public:
 	void blend(uint32_t fgcolor, double alpha);
 	void set_border(bool draw_border = true);
+	void redraw(bool erase = false) override;
 public:
 	virtual void render() override;
 private:

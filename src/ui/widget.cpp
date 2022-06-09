@@ -105,8 +105,12 @@ void Widget::set_max_bound(int width, int height) {
 }
 
 void Widget::setup(const Widget *parent) {
-	if (m_setup) return;
-
+	if (m_setup) {
+		if (m_hwnd && parent->m_hwnd) {
+			SetParent(m_hwnd, parent->m_hwnd);
+		}
+		return;
+	}
 
 	WNDCLASSEX wc = { };
 	wc.lpfnWndProc   = Widget::dispatch;
@@ -175,8 +179,11 @@ LRESULT CALLBACK Widget::dispatch(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpa
 					window.bottom - client.bottom + widget->m_height,
 					SWP_NOMOVE | SWP_NOZORDER);
 			}
+			widget->m_setup = true;
 
 			widget->created();
+
+			printf("@%s [%p] created.\n", widget->get_class(), widget->m_hwnd);
 		}
 		break;
 		case WM_SETFOCUS: {
@@ -281,6 +288,10 @@ LRESULT CALLBACK Widget::dispatch(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpa
 			widget->double_clicked(posx, posy, wparam);
 		}
 		break;
+		case WM_KEYDOWN: {
+			widget->Widget::key_down(wparam);
+		}
+		break;
 		case WM_MOUSEMOVE: {
 			int posx = GET_X_LPARAM(lparam);
 			int posy = GET_Y_LPARAM(lparam);
@@ -327,11 +338,19 @@ LRESULT CALLBACK Widget::dispatch(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpa
 }
 
 int Widget::width() const {
-	return m_width;
+	return m_width == CW_USEDEFAULT ? 0 : m_width;
 }
 
 int Widget::height() const {
-	return m_height;
+	return m_height == CW_USEDEFAULT ? 0 : m_height;
+}
+
+int Widget::x() const {
+	return m_posx == CW_USEDEFAULT ? 0 : m_posx;
+}
+
+int Widget::y() const {
+	return m_posy == CW_USEDEFAULT ? 0 : m_posy;
 }
 
 std::tuple<int, int> Widget::get_min_bound() const {
