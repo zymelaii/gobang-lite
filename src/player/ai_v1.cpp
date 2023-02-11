@@ -64,7 +64,7 @@ void AIv1::prepare() {
 	}
 	row = pos / N;
 	col = pos % N;
-	std::packaged_task<void()> task([this, row, col]() {
+	std::packaged_task<void()> task([this, row = row, col = col]() {
 		Sleep(rand() % 3000 + 600);
 		drop(row, col);
 		cost_drop(row, col);
