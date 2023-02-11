@@ -4,6 +4,8 @@ project(gobang-lite VERSION 0.5.0 LANGUAGES CXX C)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 option(ENABLE_CONSOLE "enable console" OFF)
 option(STATIC_LINK "enable link staticly" ON)
 
@@ -15,11 +17,14 @@ if (NOT ENABLE_CONSOLE)
 	endif()
 endif()
 
-include_directories(./src)
-add_subdirectory(./src)
+include_directories(src)
+add_subdirectory(src)
 
-install(TARGETS ${PROJECT_NAME}
-	DESTINATION ${CMAKE_BINARY_DIR})
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets
-	DESTINATION ${CMAKE_BINARY_DIR})
-
+install(
+	TARGETS ${PROJECT_NAME}
+	DESTINATION ${CMAKE_BINARY_DIR}
+)
+install(
+	DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets
+	DESTINATION ${CMAKE_BINARY_DIR}
+)
