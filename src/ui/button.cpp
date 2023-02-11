@@ -48,7 +48,7 @@ Button::Button(int width, int height)
 }
 
 void Button::set_text(const char *text) {
-	snprintf(m_text, sizeof(m_text), text);
+	snprintf(m_text, sizeof(m_text), "%s", text);
 
 	redraw();
 }
